@@ -3,7 +3,6 @@ import datetime
 from django.db import models
 from django.db.models import Q
 from django.core.cache import cache
-from django.contrib.auth.models import User
 from django.utils.translation import ugettext_lazy as _
 
 from friendship.signals import friendship_request_created, \
@@ -11,7 +10,12 @@ from friendship.signals import friendship_request_created, \
         friendship_request_viewed, friendship_request_accepted, \
         friendship_removed, follower_created, following_created, follower_removed,\
         following_removed
-
+try:
+    from django.contrib.auth import get_user_model
+except ImportError: # django < 1.5
+    from django.contrib.auth.models import User
+else:
+    User = get_user_model()
 
 CACHE_TYPES = {
     'friends': 'f-%d',

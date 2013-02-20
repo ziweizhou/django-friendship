@@ -1,9 +1,12 @@
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
 from django.shortcuts import render, get_object_or_404, redirect
-
 from friendship.models import Friend, Follow, FriendshipRequest
-
+try:
+    from django.contrib.auth import get_user_model
+except ImportError: # django < 1.5
+    from django.contrib.auth.models import User
+else:
+    User = get_user_model()
 
 def view_friends(request, username, template_name='friendship/friend/user_list.html'):
     """ View the friends of a user """
