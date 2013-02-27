@@ -94,6 +94,7 @@ class FriendshipRequest(models.Model):
             )
 
         self.delete()
+        bust_cache('requests', self.to_user.pk)
         return True
 
     def reject(self):
@@ -101,17 +102,20 @@ class FriendshipRequest(models.Model):
         self.rejected = datetime.datetime.now()
         friendship_request_rejected.send(sender=self)
         self.save()
+        bust_cache('requests', self.to_user.pk)
 
     def cancel(self):
         """ cancel this friendship request """
         self.delete()
         friendship_request_canceled.send(sender=self)
+        bust_cache('requests', self.to_user.pk)
         return True
 
     def mark_viewed(self):
         self.viewed = datetime.datetime.now()
         friendship_request_viewed.send(sender=self)
         self.save()
+        bust_cache('requests', self.to_user.pk)
         return True
 
 
