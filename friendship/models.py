@@ -21,6 +21,8 @@ CACHE_TYPES = {
     'friends': 'f-%d',
     'followers': 'fo-%d',
     'following': 'fl-%d',
+    'followers_queryset': 'fo-qs-%d',
+    'following_queryset': 'fl-qs-%d',
     'requests': 'fr-%d',
     'unread_requests': 'fru-%d',
     'unread_request_count': 'fruc-%d',
@@ -30,8 +32,8 @@ CACHE_TYPES = {
 
 BUST_CACHES = {
     'friends': ['friends'],
-    'followers': ['followers'],
-    'following': ['following'],
+    'followers': ['followers','followers_queryset'],
+    'following': ['following','following_queryset'],
     'requests': [
         'requests',
         'unread_requests',
@@ -296,13 +298,12 @@ class FollowingManager(models.Manager):
 
     def add_follower(self, follower, followee):
         """ Create 'follower' follows 'followee' relationship """
-        relation = Follow.objects.create(follower=follower, followee=followee)
-
-        follower_created.send(sender=self, follower=follower)
-        following_created.send(sender=self, follow=followee)
-
-        bust_cache('followers', followee.pk)
-        bust_cache('following', follower.pk)
+        relation,created = Follow.objects.get_or_create(follower=follower, followee=followee)
+        if created:
+            follower_created.send(sender=self, follower=follower)
+            following_created.send(sender=self, follow=followee)
+            bust_cache('followers', followee.pk)
+            bust_cache('following', follower.pk)
 
         return relation
 
@@ -334,6 +335,55 @@ class FollowingManager(models.Manager):
                 return True
             except Follow.DoesNotExist:
                 return False
+
+# I added following 2 functions, so that the select statement on users attribute can utilize the IN clause instead of select each user objects one by one                 
+    def followers_queryset(self, user_id, *fields):
+        """ Return a list of all followers in queryset format"""
+        key = cache_key('followers_queryset', user_id)
+        followers = cache.get(key)
+
+        if not followers:
+            qs = Follow.objects.filter(followee__pk=user_id).values("follower")
+            if(fields != None):
+                followers = list(User.objects.filter(pk__in=[u["follower"] for u in qs]).values(*fields))
+            else:    
+                followers = list(User.objects.filter(pk__in=[u["follower"] for u in qs]))
+            cache.set(key, followers)
+        return followers
+
+    def following_queryset(self, user_id, *fields):
+        """ Return a list of all users the given user follows in queryset format """
+        key = cache_key('following_queryset', user_id)
+        following = cache.get(key)
+
+        if not following:
+            qs = Follow.objects.filter(follower__pk=user_id).values("followee")
+            if(fields != None):
+                following = list(User.objects.filter(pk__in=[u["followee"] for u in qs]).values(*fields))
+            else:    
+                following = list(User.objects.filter(pk__in=[u["followee"] for u in qs]))
+            cache.set(key, following)
+        return following  
+
+    def isfollowing_byid(self,user_id1,user_id2):
+        """ Does follower follow followee? Smartly uses caches if exists """
+        # everyone user1 follows
+        user1_followings = cache.get(cache_key('following_queryset', user_id1))
+        # everyone follows user2
+        user2_followers = cache.get(cache_key('followers_queryset', user_id2))
+
+        if user1_followings != None and user_id2 in [u["id"] for u in user1_followings]:
+            return True
+        elif user2_followers != None and user_id1 in [u["id"] for u in user2_followers]:
+            return True
+        else:    
+            try:
+                Follow.objects.get(follower__pk=user_id1, followee__pk=user_id2)
+                return True
+            except Follow.DoesNotExist:
+                return False    
+
+    
 
 
 class Follow(models.Model):
