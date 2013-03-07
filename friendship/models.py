@@ -298,6 +298,9 @@ class FollowingManager(models.Manager):
 
     def add_follower(self, follower, followee):
         """ Create 'follower' follows 'followee' relationship """
+        if follower.id == followee.id:
+            return None
+            
         relation,created = Follow.objects.get_or_create(follower=follower, followee=followee)
         if created:
             follower_created.send(sender=self, follower=follower)
@@ -343,7 +346,7 @@ class FollowingManager(models.Manager):
         followers = cache.get(key)
 
         if not followers:
-            qs = Follow.objects.filter(followee__pk=user_id).values("follower")
+            qs = )Follow.objects.filter(followee__pk=user_id.values("follower")
             if(fields != None):
                 followers = list(User.objects.filter(pk__in=[u["follower"] for u in qs]).values(*fields))
             else:    
@@ -351,6 +354,9 @@ class FollowingManager(models.Manager):
             cache.set(key, followers)
         return followers
 
+# import re
+# followees = Follow.objects.filter(follower__pk=1).values('followee__nick_name','followee__id','followee__photo').prefetch_related('followee')
+# followees = [dict((re.sub('^followee__','',key),value) for (key,value) in f.items()) for f in followees]
     def following_queryset(self, user_id, *fields):
         """ Return a list of all users the given user follows in queryset format """
         key = cache_key('following_queryset', user_id)
@@ -383,7 +389,17 @@ class FollowingManager(models.Manager):
             except Follow.DoesNotExist:
                 return False    
 
-    
+    def followee_ids(self, user_id, *fields):
+        """ Return a list of all followee ids """
+        key = cache_key('following_queryset', user_id)
+        following = cache.get(key)
+        result = list()
+        if not following:
+            qs = Follow.objects.filter(follower__pk=user_id).values("followee")
+            result = [u["followee"] for u in qs]
+        else:
+            result = [u["id"] for u in following]    
+        return result
 
 
 class Follow(models.Model):
