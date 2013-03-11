@@ -346,7 +346,7 @@ class FollowingManager(models.Manager):
         followers = cache.get(key)
 
         if not followers:
-            qs = Follow.objects.filter(followee__pk=user_id)
+            qs = Follow.objects.filter(followee__pk=user_id).values("follower")
             if(fields != None):
                 followers = list(User.objects.filter(pk__in=[u["follower"] for u in qs]).values(*fields))
             else:    
