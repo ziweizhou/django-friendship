@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
@@ -11,8 +12,8 @@ class login(object):
         self.testcase = testcase
         success = testcase.client.login(username=user, password=password)
         self.testcase.assertTrue(
-             success,
-             "login with username=%r, password=%r failed" % (user, password)
+            success,
+            "login with username=%r, password=%r failed" % (user, password)
         )
 
     def __enter__(self):
@@ -78,6 +79,8 @@ class FriendshipModelTests(BaseTestCase):
         # Ensure the proper sides have requests or not
         self.assertEqual(len(Friend.objects.requests(self.user_bob)), 0)
         self.assertEqual(len(Friend.objects.requests(self.user_steve)), 1)
+        self.assertEqual(len(Friend.objects.sent_requests(self.user_bob)), 1)
+        self.assertEqual(len(Friend.objects.sent_requests(self.user_steve)), 0)
         self.assertEqual(len(Friend.objects.unread_requests(self.user_steve)), 1)
         self.assertEqual(len(Friend.objects.rejected_requests(self.user_steve)), 0)
 
@@ -129,6 +132,14 @@ class FriendshipModelTests(BaseTestCase):
         self.assertFalse(Friend.objects.are_friends(self.user_susan, self.user_amy))
         self.assertEqual(len(Friend.objects.read_requests(self.user_amy)), 1)
 
+        # Ensure we can't be friends with ourselves
+        with self.assertRaises(ValidationError):
+            Friend.objects.add_friend(self.user_bob, self.user_bob)
+
+        # Ensure we can't do it manually either
+        with self.assertRaises(ValidationError):
+            Friend.objects.create(to_user=self.user_bob, from_user=self.user_bob)
+
     def test_following(self):
         # Bob follows Steve
         req1 = Follow.objects.add_follower(self.user_bob, self.user_steve)
@@ -145,6 +156,13 @@ class FriendshipModelTests(BaseTestCase):
         self.assertEqual(len(Follow.objects.followers(self.user_steve)), 0)
         self.assertEqual(len(Follow.objects.following(self.user_bob)), 0)
         self.assertFalse(Follow.objects.follows(self.user_bob, self.user_steve))
+
+        # Ensure we canot follow ourselves
+        with self.assertRaises(ValidationError):
+            Follow.objects.add_follower(self.user_bob, self.user_bob)
+
+        with self.assertRaises(ValidationError):
+            Follow.objects.create(follower=self.user_bob, followee=self.user_bob)
 
 
 class FriendshipViewTests(BaseTestCase):
