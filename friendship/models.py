@@ -331,8 +331,8 @@ class FollowingManager(models.Manager):
             
         relation,created = Follow.objects.get_or_create(follower=follower, followee=followee)
         if created:
-            follower_created.send(sender=self, follower=follower)
-            following_created.send(sender=self, follow=followee)
+            follower_created.send(sender=self, follower=follower,followee=followee)
+            following_created.send(sender=self, follower=follower,followee=followee)
             bust_cache('followers', followee.pk)
             bust_cache('following', follower.pk)
         
@@ -342,8 +342,8 @@ class FollowingManager(models.Manager):
         """ Remove 'follower' follows 'followee' relationship """
         try:
             rel = Follow.objects.get(follower=follower, followee=followee)
-            follower_removed.send(sender=rel, follower=rel.follower)
-            following_removed.send(sender=rel, following=rel.followee)
+            follower_removed.send(sender=rel, follower=follower,followee=followee)
+            following_removed.send(sender=rel, follower=follower,followee=followee)
             rel.delete()
             bust_cache('followers', followee.pk)
             bust_cache('following', follower.pk)
