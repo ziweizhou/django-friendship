@@ -373,6 +373,8 @@ class FollowingManager(models.Manager):
 
     def isfollowing_byid(self,user_id1,user_id2):
         """ Does follower follow followee? Smartly uses caches if exists """
+        if user_id1 == user_id2:
+            return True
         # everyone user1 follows
         user1_followings = cache.get(cache_key('following_queryset', user_id1))
         # everyone follows user2
