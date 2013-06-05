@@ -376,9 +376,9 @@ class FollowingManager(models.Manager):
         if not followers:
             qs = Follow.objects.filter(followee__pk=user_id).values("follower")
             if(fields != None):
-                followers = list(User.objects.filter(pk__in=[u["follower"] for u in qs]).values(*fields))
+                followers = list(AUTH_USER_MODEL.objects.filter(pk__in=[u["follower"] for u in qs]).values(*fields))
             else:    
-                followers = list(User.objects.filter(pk__in=[u["follower"] for u in qs]))
+                followers = list(AUTH_USER_MODEL.objects.filter(pk__in=[u["follower"] for u in qs]))
             cache.set(key, followers)
         return followers
 
@@ -393,9 +393,9 @@ class FollowingManager(models.Manager):
         if not following:
             qs = Follow.objects.filter(follower__pk=user_id).values("followee")
             if(fields != None):
-                following = list(User.objects.filter(pk__in=[u["followee"] for u in qs]).values(*fields))
+                following = list(AUTH_USER_MODEL.objects.filter(pk__in=[u["followee"] for u in qs]).values(*fields))
             else:    
-                following = list(User.objects.filter(pk__in=[u["followee"] for u in qs]))
+                following = list(AUTH_USER_MODEL.objects.filter(pk__in=[u["followee"] for u in qs]))
             cache.set(key, following)
         return following  
 
