@@ -13,7 +13,14 @@ from friendship.signals import friendship_request_created, \
     friendship_removed, follower_created, following_created, follower_removed,\
     following_removed
 
-AUTH_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
+
+
+try:
+    from django.contrib.auth import get_user_model
+except ImportError: # django < 1.5
+    from django.contrib.auth.models import User
+else:
+    User = get_user_model()
 
 CACHE_TYPES = {
     'friends': 'f-%d',
@@ -61,8 +68,8 @@ def bust_cache(type, user_pk):
 
 class FriendshipRequest(models.Model):
     """ Model to represent friendship requests """
-    from_user = models.ForeignKey(AUTH_USER_MODEL, related_name='friendship_requests_sent')
-    to_user = models.ForeignKey(AUTH_USER_MODEL, related_name='friendship_requests_received')
+    from_user = models.ForeignKey(User, related_name='friendship_requests_sent')
+    to_user = models.ForeignKey(User, related_name='friendship_requests_received')
 
     message = models.TextField(_('Message'), blank=True)
 
@@ -276,8 +283,8 @@ class FriendshipManager(models.Manager):
 
 class Friend(models.Model):
     """ Model to represent Friendships """
-    to_user = models.ForeignKey(AUTH_USER_MODEL, related_name='friends')
-    from_user = models.ForeignKey(AUTH_USER_MODEL, related_name='_unused_friend_relation')
+    to_user = models.ForeignKey(User, related_name='friends')
+    from_user = models.ForeignKey(User, related_name='_unused_friend_relation')
     created = models.DateTimeField(default=timezone.now)
 
     objects = FriendshipManager()
@@ -376,9 +383,9 @@ class FollowingManager(models.Manager):
         if not followers:
             qs = Follow.objects.filter(followee__pk=user_id).values("follower")
             if(fields != None):
-                followers = list(AUTH_USER_MODEL.objects.filter(pk__in=[u["follower"] for u in qs]).values(*fields))
+                followers = list(User.objects.filter(pk__in=[u["follower"] for u in qs]).values(*fields))
             else:    
-                followers = list(AUTH_USER_MODEL.objects.filter(pk__in=[u["follower"] for u in qs]))
+                followers = list(User.objects.filter(pk__in=[u["follower"] for u in qs]))
             cache.set(key, followers)
         return followers
 
@@ -393,9 +400,9 @@ class FollowingManager(models.Manager):
         if not following:
             qs = Follow.objects.filter(follower__pk=user_id).values("followee")
             if(fields != None):
-                following = list(AUTH_USER_MODEL.objects.filter(pk__in=[u["followee"] for u in qs]).values(*fields))
+                following = list(User.objects.filter(pk__in=[u["followee"] for u in qs]).values(*fields))
             else:    
-                following = list(AUTH_USER_MODEL.objects.filter(pk__in=[u["followee"] for u in qs]))
+                following = list(User.objects.filter(pk__in=[u["followee"] for u in qs]))
             cache.set(key, following)
         return following  
 
@@ -434,8 +441,8 @@ class FollowingManager(models.Manager):
 
 class Follow(models.Model):
     """ Model to represent Following relationships """
-    follower = models.ForeignKey(AUTH_USER_MODEL, related_name='following')
-    followee = models.ForeignKey(AUTH_USER_MODEL, related_name='followers')
+    follower = models.ForeignKey(User, related_name='following')
+    followee = models.ForeignKey(User, related_name='followers')
     created = models.DateTimeField(default=timezone.now)
 
     objects = FollowingManager()
